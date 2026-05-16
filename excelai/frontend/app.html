@@ -40,10 +40,10 @@
 
           <form class="mode-form hidden" id="imageForm" data-form-mode="image">
             <label class="dropzone" id="dropzone">
-              <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" />
+              <input id="imageFile" type="file" accept="image/*,application/pdf" />
               <div>
-                <strong>Drag & drop an image or screenshot</strong>
-                <span>PNG, JPG, WEBP, PDF screenshot</span>
+                <strong>Drag & drop an image or PDF</strong>
+                <span>PNG, JPG, WEBP, PDF, and other supported formats</span>
               </div>
             </label>
             <div class="preview-row">
@@ -114,7 +114,7 @@
   </div>
 
   <div class="toast-host" id="toastHost" aria-live="polite"></div>
-  <input type="file" id="toolbarImageInput" accept="image/png,image/jpeg,image/webp,application/pdf" class="hidden-input" />
+  <input type="file" id="toolbarImageInput" accept="image/*,application/pdf" class="hidden-input" />
 
   <script src="js/api.js"></script>
   <script src="js/table.js"></script>

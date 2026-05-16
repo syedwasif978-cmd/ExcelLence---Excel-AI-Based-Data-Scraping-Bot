@@ -4,6 +4,8 @@ groq
 openpyxl
 Pillow
 pytesseract
+pypdf
+pymupdf
 beautifulsoup4
 httpx
 python-jose[cryptography]

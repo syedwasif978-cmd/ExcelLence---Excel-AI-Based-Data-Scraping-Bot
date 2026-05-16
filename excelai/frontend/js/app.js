@@ -71,6 +71,25 @@
     addMessage('system', text);
   }
 
+  function isPreviewableFile(file) {
+    return Boolean(file) && file.type.startsWith('image/');
+  }
+
+  function updateUploadPreview(file) {
+    if (!file || !isPreviewableFile(file)) {
+      imagePreview.removeAttribute('src');
+      imagePreview.classList.add('hidden');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      imagePreview.src = String(reader.result);
+      imagePreview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
   function addUserMessage(text) {
     addMessage('user', text);
   }
@@ -430,13 +449,7 @@
 
   imageInput.addEventListener('change', () => {
     const file = imageInput.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      imagePreview.src = String(reader.result);
-      imagePreview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+    updateUploadPreview(file);
   });
 
   toolbarImageInput.addEventListener('change', () => {
@@ -445,12 +458,7 @@
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     imageInput.files = dataTransfer.files;
-    const reader = new FileReader();
-    reader.onload = () => {
-      imagePreview.src = String(reader.result);
-      imagePreview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+    updateUploadPreview(file);
     setMode('image');
   });
 
@@ -471,12 +479,7 @@
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     imageInput.files = dataTransfer.files;
-    const reader = new FileReader();
-    reader.onload = () => {
-      imagePreview.src = String(reader.result);
-      imagePreview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
+    updateUploadPreview(file);
     setMode('image');
   });
 
