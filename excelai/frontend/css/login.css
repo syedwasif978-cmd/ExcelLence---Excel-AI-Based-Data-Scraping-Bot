@@ -280,7 +280,190 @@ h2 {
 }
 
 @media (max-width: 640px) {
-  .login-shell { padding: 16px; }
-  .floating-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  h1 { font-size: 2.8rem; }
+  .login-shell {
+    padding: 16px;
+    gap: 24px;
+  }
+
+  .branding-panel {
+    min-height: auto;
+    padding: 20px 0;
+  }
+
+  .brand-mark img { width: 56px; height: 56px; }
+  
+  h1 {
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    line-height: 1;
+  }
+
+  .lede {
+    margin: 20px 0 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .floating-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .floating-grid span {
+    padding: 12px 14px;
+    font-size: 0.8rem;
+    border-radius: 14px;
+  }
+
+  .login-card {
+    justify-self: stretch;
+    width: 100%;
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .card-topline { font-size: 0.8rem; margin-bottom: 14px; }
+  
+  h2 { font-size: 1.8rem; margin-bottom: 12px; }
+  
+  .subcopy { font-size: 0.9rem; margin-bottom: 10px; }
+  .demo-note { font-size: 0.85rem; margin-bottom: 14px; }
+
+  .auth-form { gap: 14px; margin-top: 16px; }
+
+  .field input {
+    padding: 14px 14px 12px;
+    font-size: 0.95rem;
+    border-radius: 14px;
+  }
+
+  .field span {
+    left: 14px;
+    top: 14px;
+    font-size: 0.8rem;
+  }
+
+  .field input:focus + span,
+  .field input:not(:placeholder-shown) + span {
+    top: 6px;
+    font-size: 0.65rem;
+  }
+
+  .primary-btn {
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    min-height: 44px;
+    border-radius: 14px;
+  }
+
+  .auth-switch {
+    margin-top: 14px;
+    font-size: 0.85rem;
+  }
+
+  .toast-host { right: 12px; bottom: 12px; }
+  .toast {
+    min-width: 240px;
+    max-width: calc(100vw - 24px);
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    border-radius: 12px;
+  }
+}
+
+/* Ultra Mobile: <= 480px */
+@media (max-width: 480px) {
+  .login-shell {
+    padding: 12px;
+    gap: 20px;
+  }
+
+  .branding-panel {
+    min-height: auto;
+    padding: 16px 0;
+  }
+
+  .brand-mark img { width: 48px; height: 48px; }
+
+  h1 {
+    font-size: clamp(1.5rem, 5vw, 2.8rem);
+    max-width: 12ch;
+  }
+
+  .eyebrow { font-size: 0.7rem; letter-spacing: 0.2em; }
+  .lede { font-size: 0.9rem; margin: 16px 0 0; }
+
+  .floating-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .floating-grid span {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    border-radius: 12px;
+  }
+
+  .login-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  h2 { font-size: 1.6rem; }
+  .card-topline { font-size: 0.75rem; }
+  .subcopy, .demo-note { font-size: 0.85rem; }
+
+  .auth-form { gap: 12px; margin-top: 14px; }
+
+  .field input {
+    padding: 12px 12px 10px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+
+  .field span {
+    left: 12px;
+    top: 12px;
+    font-size: 0.75rem;
+  }
+
+  .field input:focus + span,
+  .field input:not(:placeholder-shown) + span {
+    top: 5px;
+    font-size: 0.6rem;
+  }
+
+  .primary-btn {
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    min-height: 42px;
+    border-radius: 12px;
+  }
+
+  .auth-switch { font-size: 0.8rem; }
+
+  .toast-host { right: 8px; bottom: 8px; }
+  .toast {
+    min-width: 200px;
+    max-width: calc(100vw - 16px);
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Landscape Mobile */
+@media (max-width: 900px) and (max-height: 500px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .branding-panel { display: none; }
+  .login-card { width: 100%; max-width: 100%; }
+  
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+  .auth-form { gap: 10px; }
 }
