@@ -165,7 +165,8 @@ def build_fallback_table(source_text: str, hint: str | None = None) -> dict[str,
         data_lines = lines
 
     rows: list[list[Any]] = []
-    for line in data_lines[:200]:
+    max_rows = 1000  # Increased from 200 to handle large datasets
+    for line in data_lines[:max_rows]:
         cells = [normalize_whitespace(part) for part in re.split(r"\s{2,}|\t|\|", line) if normalize_whitespace(part)]
         if not cells:
             continue
@@ -178,7 +179,7 @@ def build_fallback_table(source_text: str, hint: str | None = None) -> dict[str,
             rows.append(row)
 
     if not rows:
-        rows = [[line] for line in lines[:50]]
+        rows = [[line] for line in lines[:100]]
         headers = ["Content"]
 
     columns = []

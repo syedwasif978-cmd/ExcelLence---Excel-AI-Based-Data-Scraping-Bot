@@ -4,7 +4,7 @@ import os
 from typing import Any
 
 from backend.models.schemas import ColumnSchema
-from backend.utils.helpers import build_fallback_table, parse_ai_payload, safe_json_loads
+from backend.utils.helpers import build_fallback_table, normalize_whitespace, parse_ai_payload, safe_json_loads
 
 SYSTEM_PROMPT = """You are ExcelAI, a precision data extraction engine. Your sole job is to extract structured tabular data from user input and return it as valid JSON.
 
@@ -33,9 +33,29 @@ RETURN FORMAT (strict JSON):
 """
 
 MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MAX_PROMPT_CHARS = 50000  # Increased to handle large datasets (40-50 columns/rows)
+
+
+def _truncate_for_llm(content: str) -> str:
+    """Truncate content while preserving table structure. Prioritize keeping all columns."""
+    lines = content.split("\n")
+    normalized = normalize_whitespace(content)
+    if len(normalized) <= MAX_PROMPT_CHARS:
+        return normalized
+    
+    # For large tables, keep all header and rows up to the char limit
+    current = ""
+    for line in lines:
+        test = current + ("\n" if current else "") + line
+        if len(test) <= MAX_PROMPT_CHARS:
+            current = test
+        else:
+            break
+    return current + "\n...[large dataset truncated for LLM processing]"
 
 
 def _compose_user_prompt(source_label: str, content: str, clarification: str | None = None) -> str:
+    content = _truncate_for_llm(content)
     if source_label == "URL":
         return (
             f"Here is the content scraped from a URL. Identify the most relevant table based on user intent: '{clarification or 'extract the primary table'}'. "
@@ -43,20 +63,22 @@ def _compose_user_prompt(source_label: str, content: str, clarification: str | N
         )
     if source_label == "IMAGE":
         return (
-            "Here is text extracted via OCR from a screenshot/image. Parse it into a structured table. "
+            "Here is text extracted via OCR from a screenshot/image or PDF. Parse it into a structured table. "
             "Flag any values that may be OCR misreads (e.g. 'S' vs '5', 'l' vs '1').\n\n"
             f"CONTENT:\n{content}"
         )
     return f"Extract the tabular data from the user input into the strict JSON format above.\n\nCONTENT:\n{content}"
 
 
-def _extract_groq_content(client: Any, messages: list[dict[str, str]]) -> str:
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=messages,
-        temperature=0.1,
-        response_format={"type": "json_object"},
-    )
+def _extract_groq_content(client: Any, messages: list[dict[str, str]], strict_json: bool = True) -> str:
+    request_kwargs: dict[str, Any] = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "temperature": 0.1,
+    }
+    if strict_json:
+        request_kwargs["response_format"] = {"type": "json_object"}
+    response = client.chat.completions.create(**request_kwargs)
     choice = response.choices[0]
     message = getattr(choice, "message", None)
     content = getattr(message, "content", None)
@@ -88,14 +110,30 @@ def generate_table(
         user_prompt = _compose_user_prompt(source_label, content, clarification)
         if instruction:
             user_prompt += f"\n\nAdditional instruction: {instruction}"
-        raw = _extract_groq_content(
-            client,
-            [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        payload = safe_json_loads(raw)
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        raw = _extract_groq_content(client, messages, strict_json=True)
+        try:
+            payload = safe_json_loads(raw)
+        except Exception:
+            retry_prompt = (
+                user_prompt
+                + "\n\nReturn only valid JSON. Do not include markdown, code fences, or explanations."
+            )
+            raw = _extract_groq_content(
+                client,
+                [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": retry_prompt},
+                ],
+                strict_json=False,
+            )
+            payload = safe_json_loads(raw)
+
         return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
     except Exception as exc:
         fallback["warnings"] = fallback.get("warnings", []) + [f"LLM extraction failed. Fallback parsing was used. ({exc.__class__.__name__})"]
