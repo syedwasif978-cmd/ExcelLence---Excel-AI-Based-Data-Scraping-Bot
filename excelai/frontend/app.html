@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ExcelAI — Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="toolbar" id="toolbar"></header>
+
+    <main class="workspace">
+      <section class="chat-panel">
+        <div class="panel-header">
+          <h2>Data Input</h2>
+          <span class="cursor-dot"></span>
+        </div>
+
+        <div class="message-stream" id="messageStream"></div>
+
+        <div class="input-switcher">
+          <button class="mode-btn active" data-mode="text">Text Prompt</button>
+          <button class="mode-btn" data-mode="image">Image Upload</button>
+          <button class="mode-btn" data-mode="url">URL Input</button>
+        </div>
+
+        <div class="input-stack" id="inputStack">
+          <form class="mode-form" id="textForm" data-form-mode="text">
+            <label class="floating textarea-field">
+              <textarea id="textPrompt" placeholder=" " rows="8"></textarea>
+              <span>e.g. Top 10 electric car companies by market cap 2024 with columns: Rank, Company, Market Cap (USD B), Country</span>
+            </label>
+            <button type="submit" class="primary-btn">Extract Data</button>
+          </form>
+
+          <form class="mode-form hidden" id="imageForm" data-form-mode="image">
+            <label class="dropzone" id="dropzone">
+              <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" />
+              <div>
+                <strong>Drag & drop an image or screenshot</strong>
+                <span>PNG, JPG, WEBP, PDF screenshot</span>
+              </div>
+            </label>
+            <div class="preview-row">
+              <img id="imagePreview" alt="Upload preview" class="image-preview hidden" />
+            </div>
+            <label class="floating">
+              <input id="imageInstruction" type="text" placeholder=" " />
+              <span>Optional instruction</span>
+            </label>
+            <button type="submit" class="primary-btn">Extract From Image</button>
+          </form>
+
+          <form class="mode-form hidden" id="urlForm" data-form-mode="url">
+            <label class="floating">
+              <input id="urlInput" type="url" placeholder=" " />
+              <span>https://en.wikipedia.org/wiki/List_of_largest_companies</span>
+            </label>
+            <label class="floating">
+              <input id="urlClarification" type="text" placeholder=" " />
+              <span>Which table on this page?</span>
+            </label>
+            <button type="submit" class="primary-btn">Scrape & Extract</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="table-panel">
+        <div class="panel-header table-header">
+          <div>
+            <h2>Extracted Table Preview</h2>
+            <p id="tableMeta">Your extracted table will appear here.</p>
+          </div>
+          <div class="badge-group">
+            <span class="badge" id="shapeBadge">0 rows × 0 columns</span>
+            <span class="badge badge-soft" id="confidenceBadge">Confidence: --</span>
+          </div>
+        </div>
+
+        <div class="confirmation-bar hidden" id="confirmationBar">
+          <div>
+            <strong id="confirmationText">AI has extracted data.</strong>
+            <span id="confirmationSubtext"></span>
+          </div>
+          <div class="bar-actions">
+            <button class="secondary-btn" id="editBeforeExport">Edit before export</button>
+            <button class="primary-btn" id="confirmExport">Confirm & Export</button>
+            <button class="ghost-btn" id="reextractButton">Re-extract</button>
+          </div>
+        </div>
+
+        <div class="table-stage" id="tableStage">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-illustration" aria-hidden="true"></div>
+            <h3>Your extracted table will appear here.</h3>
+            <p>Start by entering data on the left.</p>
+          </div>
+          <div class="table-wrapper hidden" id="tableWrapper"></div>
+          <div class="raw-json hidden" id="rawJsonPanel"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="status-bar">
+      <div id="sessionStatus">Ready</div>
+      <div id="lastAction">Idle</div>
+      <div id="modelInfo">Powered by Groq · llama-3.3-70b-versatile <span class="pulse-dot" id="modelPulse"></span></div>
+    </footer>
+  </div>
+
+  <div class="toast-host" id="toastHost" aria-live="polite"></div>
+  <input type="file" id="toolbarImageInput" accept="image/png,image/jpeg,image/webp,application/pdf" class="hidden-input" />
+
+  <script src="js/api.js"></script>
+  <script src="js/table.js"></script>
+  <script src="js/toolbar.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
