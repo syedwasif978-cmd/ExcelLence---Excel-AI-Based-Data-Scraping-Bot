@@ -6,13 +6,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.routes.auth import router as auth_router
 from backend.routes.extract import router as extract_router
 from backend.routes.export import router as export_router
 
 BASE_DIR = Path(__file__).resolve().parent
+FRONTEND_DIR = BASE_DIR.parent / "frontend"
 
 # Load environment variables from .env file (development) or system env (production)
 env_file = BASE_DIR / ".env"
@@ -34,6 +36,12 @@ app.include_router(auth_router)
 app.include_router(extract_router)
 app.include_router(export_router)
 
+# Mount static files
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+    app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
+    app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
+
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
@@ -41,7 +49,11 @@ def health() -> dict[str, str]:
 
 
 @app.get("/")
-def root() -> dict[str, str]:
+async def root() -> FileResponse | dict[str, str]:
+    """Serve index.html for root path"""
+    index_path = FRONTEND_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path, media_type="text/html")
     return {"message": "ExcelAI API is running"}
 
 
@@ -60,3 +72,24 @@ async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse
 @app.exception_handler(Exception)
 async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"error": "Internal server error", "detail": str(exc)})
+
+
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str) -> FileResponse | JSONResponse:
+    """Catch-all route to serve frontend files or index.html for client-side routing"""
+    # Don't serve HTML files that start with api/
+    if full_path.startswith("api/"):
+        return JSONResponse(status_code=404, content={"error": "API endpoint not found"})
+    
+    # Try to serve the file directly
+    file_path = FRONTEND_DIR / full_path
+    if file_path.exists() and file_path.is_file():
+        media_type = "text/html" if str(file_path).endswith(".html") else None
+        return FileResponse(file_path, media_type=media_type)
+    
+    # Serve index.html for client-side routing
+    index_path = FRONTEND_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path, media_type="text/html")
+    
+    return JSONResponse(status_code=404, content={"error": "Not found"})

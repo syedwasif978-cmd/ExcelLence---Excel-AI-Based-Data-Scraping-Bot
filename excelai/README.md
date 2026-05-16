@@ -46,21 +46,37 @@ The `.env` file is automatically loaded when running the backend locally.
 
 ### Vercel Deployment
 
-1. **Connect your repository** to Vercel
-2. **Set environment variables** in Vercel project settings:
-   - Go to **Settings → Environment Variables**
-   - Add:
-     - `GROQ_API_KEY` (keep secret)
-     - `SECRET_KEY` (keep secret)
+1. **Connect your GitHub repository to Vercel:**
+   - Go to https://vercel.com
+   - Click "New Project" and import your GitHub repository
+   - Vercel will auto-detect the Python framework
+
+2. **Configure Environment Variables:**
+   - In your Vercel project, go to **Settings → Environment Variables**
+   - Add these variables:
+     - `GROQ_API_KEY` = your Groq API key (keep as secret)
+     - `SECRET_KEY` = your JWT secret key (keep as secret)
      - `ALGORITHM` = `HS256`
      - `ACCESS_TOKEN_EXPIRE_MINUTES` = `1440`
-     - `CORS_ORIGINS` = your Vercel domain (e.g., `https://excelai-yourusername.vercel.app`)
+     - `CORS_ORIGINS` = `https://your-project.vercel.app` (replace with your actual Vercel domain)
      - `GROQ_MODEL` = `llama-3.3-70b-versatile`
-3. **Deploy** — Vercel will automatically use these environment variables for both frontend and backend
 
-**Note:** Update `CORS_ORIGINS` to your production domain after the first deployment.
+3. **Deploy:**
+   - Click "Deploy"
+   - Wait for the build to complete
+   - Your app will be live at `https://your-project.vercel.app`
 
-**Pro Tip:** Use `vercel env pull` to download Vercel environment variables to `.env.local` for local testing with production settings:
+4. **After First Deployment:**
+   - Note your actual Vercel domain
+   - Update `CORS_ORIGINS` environment variable to match your production domain
+   - Redeploy to apply the change
+
+**Troubleshooting:**
+- If you see a 404 error, check that all environment variables are set correctly
+- Make sure `CORS_ORIGINS` uses `https://` (not `http://`) for production
+- Check deployment logs in Vercel dashboard for any Python errors
+
+**Pro Tip:** Use `vercel env pull` locally to test with production environment variables:
 
 ## API Endpoints
 

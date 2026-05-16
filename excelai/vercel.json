@@ -2,10 +2,6 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    },
-    {
       "src": "backend/main.py",
       "use": "@vercel/python",
       "config": {
@@ -15,13 +11,9 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "backend/main.py" },
-    { "src": "/app", "dest": "frontend/app.html" },
-    { "src": "/(.*)", "dest": "frontend/index.html" }
-  ],
-  "env": {
-    "ALGORITHM": "@excelai_algorithm",
-    "ACCESS_TOKEN_EXPIRE_MINUTES": "@excelai_access_token_expire",
-    "GROQ_MODEL": "@excelai_groq_model"
-  }
+    {
+      "src": "/(.*)",
+      "dest": "backend/main.py"
+    }
+  ]
 }
