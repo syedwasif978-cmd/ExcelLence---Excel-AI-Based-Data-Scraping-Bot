@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from backend.routes.auth import router as auth_router
@@ -48,6 +48,18 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "ExcelAI"}
 
 
+@app.get("/favicon.ico")
+async def favicon() -> Response:
+    """Return 204 No Content for favicon requests (silently handled by browser)"""
+    return Response(status_code=204)
+
+
+@app.get("/robots.txt")
+async def robots() -> Response:
+    """Return 204 No Content for robots.txt requests"""
+    return Response(status_code=204)
+
+
 @app.get("/")
 async def root() -> FileResponse | dict[str, str]:
     """Serve index.html for root path"""
@@ -77,19 +89,27 @@ async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str) -> FileResponse | JSONResponse:
     """Catch-all route to serve frontend files or index.html for client-side routing"""
-    # Don't serve HTML files that start with api/
+    # Skip API routes
     if full_path.startswith("api/"):
         return JSONResponse(status_code=404, content={"error": "API endpoint not found"})
     
     # Try to serve the file directly
     file_path = FRONTEND_DIR / full_path
     if file_path.exists() and file_path.is_file():
-        media_type = "text/html" if str(file_path).endswith(".html") else None
+        media_type = None
+        if str(file_path).endswith(".html"):
+            media_type = "text/html"
+        elif str(file_path).endswith(".svg"):
+            media_type = "image/svg+xml"
+        elif str(file_path).endswith(".css"):
+            media_type = "text/css"
+        elif str(file_path).endswith(".js"):
+            media_type = "application/javascript"
         return FileResponse(file_path, media_type=media_type)
     
-    # Serve index.html for client-side routing
+    # For SPA client-side routing, serve index.html
     index_path = FRONTEND_DIR / "index.html"
-    if index_path.exists():
+    if index_path.exists() and not full_path.endswith((".css", ".js", ".svg", ".png", ".jpg", ".gif")):
         return FileResponse(index_path, media_type="text/html")
     
     return JSONResponse(status_code=404, content={"error": "Not found"})
