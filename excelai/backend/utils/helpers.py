@@ -45,9 +45,24 @@ def safe_json_loads(raw: str) -> dict[str, Any]:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, re.DOTALL)
+        # Try to extract JSON from markdown code blocks
+        for marker in ("```json", "```", '"""'):
+            if marker in text:
+                start = text.find(marker) + len(marker)
+                end = text.find(marker, start)
+                if end > start:
+                    extracted = text[start:end].strip()
+                    try:
+                        return json.loads(extracted)
+                    except json.JSONDecodeError:
+                        continue
+        # Try greedy regex extraction
+        match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
         if match:
-            return json.loads(match.group(0))
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
     raise ValueError("Response was not valid JSON")
 
 
@@ -74,10 +89,11 @@ def coerce_rows(rows: list[Any], column_count: int) -> list[list[Any]]:
         elif isinstance(row, (list, tuple)):
             values = list(row)
         else:
-            values = [row]
+            values = [str(row)]
         if len(values) < column_count:
             values.extend([None] * (column_count - len(values)))
-        normalized_rows.append(values[:column_count])
+        # Ensure all values are properly stringified for safety
+        normalized_rows.append([str(v) if v is not None else None for v in values[:column_count]])
     return normalized_rows
 
 
@@ -142,12 +158,14 @@ def build_fallback_table(source_text: str, hint: str | None = None) -> dict[str,
             "table_title": hint or "Extracted Data",
         }
 
+    # Try to detect headers from first line
     header_candidates = re.split(r"\s{2,}|\t|\|", lines[0])
     if len(header_candidates) > 1:
         headers = [normalize_column_name(part) for part in header_candidates if part.strip()]
         data_lines = lines[1:]
     else:
-        pair_matches = [line for line in lines if ":" in line]
+        # Look for key:value pairs
+        pair_matches = [line for line in lines if ":" in line and len(line.split(":")) == 2]
         if len(pair_matches) >= 2:
             headers = ["Field", "Value"]
             rows = []
@@ -161,13 +179,22 @@ def build_fallback_table(source_text: str, hint: str | None = None) -> dict[str,
                 "warnings": ["Fallback parser used because the input was not a clean table."],
                 "table_title": hint or "Extracted Data",
             }
-        headers = ["Content"]
-        data_lines = lines
+        
+        # Try to detect comma/tab-separated values even without explicit headers
+        # Check if most lines have consistent separator patterns
+        first_line_parts = re.split(r"\s{2,}|\t|,", lines[0])
+        if len(first_line_parts) > 1:
+            # Might be a header or first data row
+            headers = [normalize_column_name(f"Column {i+1}") for i in range(len(first_line_parts))]
+            data_lines = lines
+        else:
+            headers = ["Content"]
+            data_lines = lines
 
     rows: list[list[Any]] = []
     max_rows = 1000  # Increased from 200 to handle large datasets
     for line in data_lines[:max_rows]:
-        cells = [normalize_whitespace(part) for part in re.split(r"\s{2,}|\t|\|", line) if normalize_whitespace(part)]
+        cells = [normalize_whitespace(part) for part in re.split(r"\s{2,}|\t|,", line) if normalize_whitespace(part)]
         if not cells:
             continue
         if len(headers) == 1:
@@ -179,12 +206,13 @@ def build_fallback_table(source_text: str, hint: str | None = None) -> dict[str,
             rows.append(row)
 
     if not rows:
+        # Fallback: treat each line as a row
         rows = [[line] for line in lines[:100]]
         headers = ["Content"]
 
     columns = []
     for index, header in enumerate(headers):
-        column_values = [row[index] for row in rows if index < len(row)]
+        column_values = [row[index] if index < len(row) else None for row in rows]
         columns.append({"name": header, "type": guess_column_type(column_values)})
 
     return {

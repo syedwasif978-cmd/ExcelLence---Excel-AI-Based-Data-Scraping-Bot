@@ -37,21 +37,39 @@ MAX_PROMPT_CHARS = 50000  # Increased to handle large datasets (40-50 columns/ro
 
 
 def _truncate_for_llm(content: str) -> str:
-    """Truncate content while preserving table structure. Prioritize keeping all columns."""
+    """Truncate content while preserving table structure and headers."""
     lines = content.split("\n")
     normalized = normalize_whitespace(content)
     if len(normalized) <= MAX_PROMPT_CHARS:
         return normalized
     
-    # For large tables, keep all header and rows up to the char limit
-    current = ""
+    # For large tables: keep headers + as many rows as possible
+    header_lines = []
+    data_lines = []
+    found_data = False
+    
     for line in lines:
-        test = current + ("\n" if current else "") + line
-        if len(test) <= MAX_PROMPT_CHARS:
-            current = test
+        if not found_data:
+            # Treat first 2 lines as potential headers
+            if len(header_lines) < 2:
+                header_lines.append(line)
+                continue
+            found_data = True
+        data_lines.append(line)
+    
+    # Build result starting with headers
+    result = "\n".join(header_lines)
+    for line in data_lines:
+        test = result + "\n" + line
+        if len(test) <= MAX_PROMPT_CHARS - 100:  # Leave 100 char buffer for LLM formatting
+            result = test
         else:
+            # Add row count info instead of truncating silently
+            remaining = len(data_lines) - len(result.split("\n")[2:])
+            result += f"\n... ({remaining} more rows)"
             break
-    return current + "\n...[large dataset truncated for LLM processing]"
+    
+    return result
 
 
 def _compose_user_prompt(source_label: str, content: str, clarification: str | None = None) -> str:
@@ -116,25 +134,88 @@ def generate_table(
             {"role": "user", "content": user_prompt},
         ]
 
+        # First attempt: strict JSON mode with full prompt
         raw = _extract_groq_content(client, messages, strict_json=True)
         try:
             payload = safe_json_loads(raw)
-        except Exception:
-            retry_prompt = (
-                user_prompt
-                + "\n\nReturn only valid JSON. Do not include markdown, code fences, or explanations."
-            )
-            raw = _extract_groq_content(
-                client,
-                [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": retry_prompt},
-                ],
-                strict_json=False,
-            )
-            payload = safe_json_loads(raw)
+            # Validate that we got actual data (not empty)
+            if payload.get("columns") and payload.get("rows"):
+                return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
+        except Exception as e1:
+            pass  # Continue to retry
 
-        return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
+        # Second attempt: relaxed JSON mode with explicit strict instruction
+        retry_prompt = (
+            user_prompt
+            + "\n\n[STRICT] You MUST return valid JSON. Return ONLY JSON, nothing else. "
+            + "Ensure 'columns' array is not empty and 'rows' array has at least 1 element."
+        )
+        raw = _extract_groq_content(
+            client,
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": retry_prompt},
+            ],
+            strict_json=False,
+        )
+        try:
+            payload = safe_json_loads(raw)
+            if payload.get("columns") and payload.get("rows"):
+                return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
+        except Exception as e2:
+            pass  # Continue to retry
+
+        # Third attempt: simplified system prompt with chunked data (first 3000 chars)
+        chunk_size = 3000
+        content_chunk = content[:chunk_size]
+        if len(content) > chunk_size:
+            content_chunk += f"\n... [Total input: {len(content)} characters, showing first {chunk_size}]"
+        
+        simple_system = (
+            "Return ONLY valid JSON. Extract all columns and rows from data. "
+            "CRITICAL: columns array MUST have at least 1 item. rows array MUST have at least 1 item. "
+            'Format: {"columns": [{"name": "Col1", "type": "text"}], "rows": [["value1"]], "confidence": 0.8, "warnings": []}'
+        )
+        raw = _extract_groq_content(
+            client,
+            [
+                {"role": "system", "content": simple_system},
+                {"role": "user", "content": f"Extract this table data:\n{content_chunk}"},
+            ],
+            strict_json=False,
+        )
+        try:
+            payload = safe_json_loads(raw)
+            if payload.get("columns") and payload.get("rows"):
+                return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
+        except Exception as e3:
+            pass
+
+        # Fourth attempt: ask LLM to first identify structure, then extract
+        identify_structure_prompt = (
+            "First, identify the structure of this data (how many columns, what are they named). "
+            "Then extract all rows into JSON format. "
+            f"Data:\n{content[:2000]}"
+        )
+        raw = _extract_groq_content(
+            client,
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": identify_structure_prompt},
+            ],
+            strict_json=False,
+        )
+        try:
+            payload = safe_json_loads(raw)
+            if payload.get("columns") and payload.get("rows"):
+                return parse_ai_payload(payload, content, hint=clarification or fallback.get("table_title") or "Extracted Data")
+        except Exception as e4:
+            pass
+
+        # All LLM attempts failed - add details to fallback warning
+        fallback["warnings"] = fallback.get("warnings", []) + ["LLM extraction attempts failed. Using fallback parser."]
+        return fallback
+        
     except Exception as exc:
         fallback["warnings"] = fallback.get("warnings", []) + [f"LLM extraction failed. Fallback parsing was used. ({exc.__class__.__name__})"]
         return fallback
