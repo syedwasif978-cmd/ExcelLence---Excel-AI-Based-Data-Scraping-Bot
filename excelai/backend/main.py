@@ -54,8 +54,14 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "ExcelAI"}
 
 
-@app.get("/favicon.ico")
+@app.get("/favicon.ico", response_model=None)
 async def favicon() -> Response:
+    """Return 204 No Content for favicon requests (silently handled by browser)"""
+    return Response(status_code=204)
+
+
+@app.get("/favicon.png", response_model=None)
+async def favicon_png() -> Response:
     """Return 204 No Content for favicon requests (silently handled by browser)"""
     return Response(status_code=204)
 
@@ -66,13 +72,13 @@ async def robots() -> Response:
     return Response(status_code=204)
 
 
-@app.get("/")
-async def root() -> FileResponse | dict[str, str]:
+@app.get("/", response_model=None)
+async def root() -> Response:
     """Serve index.html for root path"""
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
         return FileResponse(index_path, media_type="text/html")
-    return {"message": "ExcelAI API is running"}
+    return JSONResponse(status_code=404, content={"error": "Frontend not found"})
 
 
 @app.exception_handler(HTTPException)
@@ -92,8 +98,8 @@ async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"error": "Internal server error", "detail": str(exc)})
 
 
-@app.get("/{full_path:path}")
-async def serve_frontend(full_path: str) -> FileResponse | JSONResponse:
+@app.get("/{full_path:path}", response_model=None)
+async def serve_frontend(full_path: str) -> Response:
     """Catch-all route to serve frontend files or index.html for client-side routing"""
     # Skip API routes
     if full_path.startswith("api/"):
