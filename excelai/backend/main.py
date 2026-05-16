@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
+
+# Ensure the parent of 'backend/' is on sys.path so "from backend.xxx" imports work on Vercel
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -14,7 +20,7 @@ from backend.routes.extract import router as extract_router
 from backend.routes.export import router as export_router
 
 BASE_DIR = Path(__file__).resolve().parent
-FRONTEND_DIR = BASE_DIR.parent / "frontend"
+FRONTEND_DIR = Path(_PROJECT_ROOT) / "frontend"
 
 # Load environment variables from .env file (development) or system env (production)
 env_file = BASE_DIR / ".env"
