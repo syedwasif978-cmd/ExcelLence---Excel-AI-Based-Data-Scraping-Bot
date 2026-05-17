@@ -22,7 +22,7 @@ python -m uvicorn backend.main:app --reload
 
 ### Frontend
 
-Serve the `frontend` folder with any static file server, or open `frontend/index.html` through a local dev server.
+Serve the  `frontend` folder with any static file server, or open `frontend/index.html` through a local dev server
 
 ## Demo Accounts
 
