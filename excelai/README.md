@@ -7,7 +7,7 @@ ExcelAI is a Phase 1 AI-assisted data extraction and Excel table creation app bu
 - JWT login and signup
 - Text, image, PDF, and URL extraction flows
 - Groq-powered structured table generation with fallback parsing
-- Inline table editing and sorting
+- Inline table editing and sorting.
 - Excel and CSV export
 - Vercel deployment config
 
